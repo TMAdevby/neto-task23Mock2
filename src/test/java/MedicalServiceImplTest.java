@@ -1,6 +1,9 @@
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import ru.netology.patient.entity.BloodPressure;
@@ -21,66 +24,67 @@ import static org.junit.jupiter.params.provider.Arguments.of;
 
 public class MedicalServiceImplTest {
 
-    @Test
-    void testSendMessage_WhenPatientBloodPressure_equalsBadPressure(){
+    static Stream<Arguments> getMessageById() {
+
+        return Stream.of(
+                of("1",new PatientInfo("1","Иван", "Петров", LocalDate.of(1980, 11, 26),
+                        new HealthInfo(new BigDecimal("36.65"), new BloodPressure(120, 80))), "Warning, patient with id: 1, need help"),
+                of("2",new PatientInfo("2","Семен", "Михайлов", LocalDate.of(1982, 1, 16),
+                        new HealthInfo(new BigDecimal("36.6"), new BloodPressure(125, 78))), "Warning, patient with id: 2, need help")
+
+        );
+    }
+
+    @ParameterizedTest(name = "Id:{0},{1} -> {2}")
+    @MethodSource("getMessageById")
+    @DisplayName("Получение сообщения по id пациента, если давление не совпадает")
+    void testSendMessage_WhenPatientBloodPressure_equalsBadPressure(String id, PatientInfo patientInfo, String expectedMessage){
         PatientInfoRepository patientInfoRepository = Mockito.mock(PatientInfoFileRepository.class);
-        PatientInfo patientInfo = new PatientInfo("1","Иван", "Петров", LocalDate.of(1980, 11, 26),
-                new HealthInfo(new BigDecimal("36.65"), new BloodPressure(120, 80)));
-        Mockito.when(patientInfoRepository.getById("1"))
+        Mockito.when(patientInfoRepository.getById(id))
                 .thenReturn(patientInfo);
 
         SendAlertService alertService = Mockito.mock(SendAlertService.class);
         Mockito.doNothing().when(alertService).send(Mockito.anyString());
-        //alertService.send(String.format("Warning, patient with id: %s, need help", patientInfo.getId()));
 
         MedicalServiceImpl medicalServiceImpl = new MedicalServiceImpl(patientInfoRepository, alertService);
 
         BloodPressure currentPressure = new BloodPressure(60, 120);
-        medicalServiceImpl.checkBloodPressure("1",currentPressure);
+        medicalServiceImpl.checkBloodPressure(id,currentPressure);
 
         Mockito.verify(alertService).send(
                 String.format("Warning, patient with id: %s, need help", patientInfo.getId())
         );
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(alertService).send(messageCaptor.capture());
+
+        String actualMessage = messageCaptor.getValue();
+        Assertions.assertEquals(expectedMessage, actualMessage);
     }
 
-//    @Test
-//    void testSendMessage_WhenCountryIsRussia_ReturnsRussianMessage() {
-//        GeoService geoService = Mockito.mock(GeoService.class);
-//        Mockito.when(geoService.byIp("172.0.32.11"))
-//                .thenReturn(new Location("Moscow", Country.RUSSIA, "Lenina", 15));
+    //    @Test
+//    void testSendMessage_WhenPatientBloodPressure_equalsBadPressure(){
+//        PatientInfoRepository patientInfoRepository = Mockito.mock(PatientInfoFileRepository.class);
+//        PatientInfo patientInfo = new PatientInfo("1","Иван", "Петров", LocalDate.of(1980, 11, 26),
+//                new HealthInfo(new BigDecimal("36.65"), new BloodPressure(120, 80)));
+//        Mockito.when(patientInfoRepository.getById("1"))
+//                .thenReturn(patientInfo);
 //
-//        LocalizationService localizationService = Mockito.mock(LocalizationService.class);
-//        Mockito.when(localizationService.locale(Country.RUSSIA))
-//                .thenReturn("Добро пожаловать");
+//        SendAlertService alertService = Mockito.mock(SendAlertService.class);
+//        Mockito.doNothing().when(alertService).send(Mockito.anyString());
+//        //alertService.send(String.format("Warning, patient with id: %s, need help", patientInfo.getId()));
 //
-//        MessageSenderImpl messageSenderImpl = new MessageSenderImpl(geoService, localizationService);
-//        Map<String, String> headers = new HashMap<>();
-//        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, "172.0.32.11");
+//        MedicalServiceImpl medicalServiceImpl = new MedicalServiceImpl(patientInfoRepository, alertService);
 //
-//        String message = messageSenderImpl.send(headers);
-//        //String expectedMessage = localizationService.locale(Country.RUSSIA);
+//        BloodPressure currentPressure = new BloodPressure(60, 120);
+//        medicalServiceImpl.checkBloodPressure("1",currentPressure);
 //
-//        Assertions.assertEquals("Добро пожаловать", message);
-//
-////        Mockito.verify(geoService, Mockito.times(1)).byIp("172.0.32.11");
-////        Mockito.verify(localizationService,Mockito.times(3)).locale(Country.RUSSIA);
-//
-//        ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-//        Mockito.verify(geoService).byIp(argumentCaptor.capture());
-//        Assertions.assertEquals("172.0.32.11", argumentCaptor.getValue());
-//
-//        ArgumentCaptor<Country> countryCaptor = ArgumentCaptor.forClass(Country.class);
-//        Mockito.verify(localizationService, Mockito.times(2)).locale(countryCaptor.capture());
-//        Assertions.assertEquals(Country.RUSSIA, countryCaptor.getValue());
-//    }
-
-//    static Stream<Arguments> getMessageByCountry() {
-//
-//        return Stream.of(
-//                of(Country.RUSSIA, "Добро пожаловать"),
-//                of(Country.USA, "Welcome"),
-//                of(Country.BRAZIL, "Welcome"),
-//                of(Country.GERMANY, "Welcome")
+//        Mockito.verify(alertService).send(
+//                String.format("Warning, patient with id: %s, need help", patientInfo.getId())
 //        );
 //    }
+
+
+
+
 }
