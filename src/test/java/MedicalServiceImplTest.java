@@ -62,6 +62,41 @@ public class MedicalServiceImplTest {
         Assertions.assertEquals(expectedMessage, actualMessage);
     }
 
+    @ParameterizedTest(name = "Id:{0},{1} -> {2}")
+    @MethodSource("getMessageById")
+    @DisplayName("Получение сообщения по id пациента, если давление не совпадает")
+    void testSendMessage_WhenPatientTemperature_equalsBadTemperature(String id, PatientInfo patientInfo, String expectedMessage){
+        PatientInfoRepository patientInfoRepository = Mockito.mock(PatientInfoFileRepository.class);
+        Mockito.when(patientInfoRepository.getById(id))
+                .thenReturn(patientInfo);
+
+        SendAlertService alertService = Mockito.mock(SendAlertService.class);
+        Mockito.doNothing().when(alertService).send(Mockito.anyString());
+
+        MedicalServiceImpl medicalServiceImpl = new MedicalServiceImpl(patientInfoRepository, alertService);
+
+        BigDecimal currentTemperature = new BigDecimal("37.9");
+        medicalServiceImpl.checkTemperature(id,currentTemperature);
+
+        Mockito.verify(alertService).send(
+                String.format("Warning, patient with id: %s, need help", patientInfo.getId())
+        );
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(alertService).send(messageCaptor.capture());
+
+        String actualMessage = messageCaptor.getValue();
+        Assertions.assertEquals(expectedMessage, actualMessage);
+    }
+
+
+
+
+
+
+
+
+
     //    @Test
 //    void testSendMessage_WhenPatientBloodPressure_equalsBadPressure(){
 //        PatientInfoRepository patientInfoRepository = Mockito.mock(PatientInfoFileRepository.class);
